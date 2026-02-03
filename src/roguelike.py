@@ -345,6 +345,16 @@ def choose_player_intent() -> str:
     return choice
 
 
+def show_battle_status(player: Actor, enemy: Actor, ctx: BattleContext) -> None:
+    log(
+        ctx,
+        (
+            f"{player.name} 生命:{player.hp}/{player.max_hp} 气:{player.qi}/{player.max_qi}"
+            f" | {enemy.name} 生命:{enemy.hp}/{enemy.max_hp} 气:{enemy.qi}/{enemy.max_qi}"
+        ),
+    )
+
+
 def resolve_transmute(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
     conversions = [
         {"status": "shock", "value": 3, "type": "damage"},
@@ -379,6 +389,7 @@ def resolve_transmute(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
 
 
 def player_action_phase(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
+    show_battle_status(actor, enemy, ctx)
     intent = choose_player_intent()
     if intent == "1":
         actor.turns_without_attack = 0
@@ -410,6 +421,7 @@ def player_action_phase(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
         if actor.inner_skill.id == "withered_zen" and actor.turns_without_attack >= 2:
             actor.add_status("double_strike", 1)
             log(ctx, f"{actor.name} 枯禅定蓄力完成。")
+    show_battle_status(actor, enemy, ctx)
 
 
 def handle_counter(defender: Actor, attacker: Actor, ctx: BattleContext) -> None:
