@@ -337,16 +337,9 @@ def action_phase(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
 
 
 def choose_player_intent() -> str:
-    print("\n请选择出招意图：1【进】2【守】3【化】(3秒无输入默认【进】)")
+    print("\n请选择出招意图：1【进】2【守】3【化】")
     print("PC: 1/2/3 | 手柄: X/Y/B | 手机: 点击按钮")
-    try:
-        ready, _, _ = select.select([sys.stdin], [], [], 3)
-    except (ValueError, OSError):
-        ready = []
-    if ready:
-        choice = sys.stdin.readline().strip()
-    else:
-        choice = "1"
+    choice = input("请输入选择: ").strip()
     if choice not in {"1", "2", "3"}:
         choice = "1"
     return choice
