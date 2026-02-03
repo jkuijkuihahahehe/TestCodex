@@ -29,6 +29,7 @@ class InnerSkill:
 class OuterSkill:
     id: str
     name: str
+    description: str
     trigger: TriggerType
     effect: Dict[str, object]
     chance: float = 1.0
@@ -130,26 +131,33 @@ def create_inner_skills() -> List[InnerSkill]:
 
 def create_outer_pool() -> List[OuterSkill]:
     return [
-        OuterSkill("shock", "震伤", "onHit", {"type": "addStatus", "status": "shock", "amount": 1}),
-        OuterSkill("combo", "连击", "onHit", {"type": "repeatLastAction", "multiplier": 0.5, "requires": "shock"}, 0.7),
-        OuterSkill("consume_shock", "化劲", "onHit", {"type": "consumeStatus", "status": "shock", "perStackDamage": 3}),
-        OuterSkill("recover_qi", "回气", "onTurnStart", {"type": "gainQi", "amount": 1}),
-        OuterSkill("counter_shock", "反震", "onDefense", {"type": "addStatus", "status": "shock", "amount": 1}),
-        OuterSkill("quick_strike", "快斩", "onAttack", {"type": "dealDamage", "amount": 2}, 0.6),
-        OuterSkill("bleed", "破甲", "onHit", {"type": "addStatus", "status": "vulnerable", "amount": 1}, 0.7),
-        OuterSkill("drain", "引气", "onHit", {"type": "gainQi", "amount": 1}, 0.7),
-        OuterSkill("surge", "气爆", "onAttack", {"type": "dealDamage", "amount": 3, "requires": "qi"}, 0.5),
-        OuterSkill("steady", "稳守", "onDefense", {"type": "addStatus", "status": "shield_qi", "amount": 1}, 0.6),
-        OuterSkill("frenzy", "狂躁", "onTurnStart", {"type": "addStatus", "status": "frenzy", "amount": 1}, 0.4),
-        OuterSkill("riposte", "回风", "onDefense", {"type": "repeatLastAction", "multiplier": 0.4}, 0.5),
-        OuterSkill("crit_focus", "凝神", "onTurnStart", {"type": "addStatus", "status": "crit_focus", "amount": 1}, 0.6),
-        OuterSkill("pierce", "破势", "onHit", {"type": "dealDamage", "amount": 2, "true": True}, 0.6),
-        OuterSkill("echo", "回响", "onHit", {"type": "repeatLastAction", "multiplier": 0.3}, 0.5),
-        OuterSkill("shield_break", "破盾", "onHit", {"type": "consumeStatus", "status": "shield_qi", "perStackDamage": 2}),
-        OuterSkill("focus", "聚气", "onTurnStart", {"type": "gainQi", "amount": 2}, 0.4),
-        OuterSkill("sunder", "碎甲", "onHit", {"type": "addStatus", "status": "vulnerable", "amount": 2}, 0.4),
-        OuterSkill("vitality", "回春", "onTurnStart", {"type": "heal", "amount": 2}, 0.5),
-        OuterSkill("backlash", "内伤反噬", "onDefense", {"type": "dealDamage", "amount": 2}, 0.6),
+        OuterSkill("shock", "震伤", "命中后附加1层震伤。", "onHit", {"type": "addStatus", "status": "shock", "amount": 1}),
+        OuterSkill(
+            "combo",
+            "连击",
+            "目标有震伤时，追加上次攻击50%伤害。",
+            "onHit",
+            {"type": "repeatLastAction", "multiplier": 0.5, "requires": "shock"},
+            0.7,
+        ),
+        OuterSkill("consume_shock", "化劲", "消耗目标震伤层数，每层造成3点真实伤害。", "onHit", {"type": "consumeStatus", "status": "shock", "perStackDamage": 3}),
+        OuterSkill("recover_qi", "回气", "回合开始时获得1点气。", "onTurnStart", {"type": "gainQi", "amount": 1}),
+        OuterSkill("counter_shock", "反震", "防御触发时给对手附加1层震伤。", "onDefense", {"type": "addStatus", "status": "shock", "amount": 1}),
+        OuterSkill("quick_strike", "快斩", "出手时追加2点伤害。", "onAttack", {"type": "dealDamage", "amount": 2}, 0.6),
+        OuterSkill("bleed", "破甲", "命中后附加1层易伤。", "onHit", {"type": "addStatus", "status": "vulnerable", "amount": 1}, 0.7),
+        OuterSkill("drain", "引气", "命中后获得1点气。", "onHit", {"type": "gainQi", "amount": 1}, 0.7),
+        OuterSkill("surge", "气爆", "有气时出手追加3点伤害。", "onAttack", {"type": "dealDamage", "amount": 3, "requires": "qi"}, 0.5),
+        OuterSkill("steady", "稳守", "防御触发时获得1层护体真气。", "onDefense", {"type": "addStatus", "status": "shield_qi", "amount": 1}, 0.6),
+        OuterSkill("frenzy", "狂躁", "回合开始时获得1层狂躁。", "onTurnStart", {"type": "addStatus", "status": "frenzy", "amount": 1}, 0.4),
+        OuterSkill("riposte", "回风", "防御触发时反击造成上次攻击40%伤害。", "onDefense", {"type": "repeatLastAction", "multiplier": 0.4}, 0.5),
+        OuterSkill("crit_focus", "凝神", "回合开始时获得1层凝神。", "onTurnStart", {"type": "addStatus", "status": "crit_focus", "amount": 1}, 0.6),
+        OuterSkill("pierce", "破势", "命中后造成2点真实伤害。", "onHit", {"type": "dealDamage", "amount": 2, "true": True}, 0.6),
+        OuterSkill("echo", "回响", "命中后追加上次攻击30%伤害。", "onHit", {"type": "repeatLastAction", "multiplier": 0.3}, 0.5),
+        OuterSkill("shield_break", "破盾", "消耗对手护体真气，每层造成2点真实伤害。", "onHit", {"type": "consumeStatus", "status": "shield_qi", "perStackDamage": 2}),
+        OuterSkill("focus", "聚气", "回合开始时获得2点气。", "onTurnStart", {"type": "gainQi", "amount": 2}, 0.4),
+        OuterSkill("sunder", "碎甲", "命中后附加2层易伤。", "onHit", {"type": "addStatus", "status": "vulnerable", "amount": 2}, 0.4),
+        OuterSkill("vitality", "回春", "回合开始时回复2点生命。", "onTurnStart", {"type": "heal", "amount": 2}, 0.5),
+        OuterSkill("backlash", "内伤反噬", "防御触发时对对手造成2点伤害。", "onDefense", {"type": "dealDamage", "amount": 2}, 0.6),
     ]
 
 
@@ -463,8 +471,13 @@ def choose_inner_skill(rng: random.Random) -> InnerSkill:
 
 def choose_outer_skill(pool: List[OuterSkill], rng: random.Random, ctx: BattleContext) -> OuterSkill:
     options = rng.sample(pool, 3)
-    log(ctx, "可选外功：" + ", ".join(skill.name for skill in options))
-    return rng.choice(options)
+    log(ctx, "可选外功：")
+    for index, skill in enumerate(options, start=1):
+        log(ctx, f"{index}) {skill.name} - {skill.description}")
+    choice = ""
+    while choice not in {"1", "2", "3"}:
+        choice = input("请选择外功 (1/2/3): ").strip()
+    return options[int(choice) - 1]
 
 
 def battle(player: Actor, enemy: Actor, ctx: BattleContext) -> bool:
