@@ -334,6 +334,82 @@ def action_phase(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
             log(ctx, f"{actor.name} 枯禅定蓄力完成。")
 
 
+def choose_player_intent() -> str:
+    print("\n请选择出招意图：1【进】2【守】3【化】")
+    print("PC: 1/2/3 | 手柄: X/Y/B | 手机: 点击按钮")
+    choice = input("请输入选择: ").strip()
+    if choice not in {"1", "2", "3"}:
+        choice = "1"
+    return choice
+
+
+def resolve_transmute(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
+    conversions = [
+        {"status": "shock", "value": 3, "type": "damage"},
+        {"status": "vulnerable", "value": 2, "type": "damage"},
+        {"status": "frenzy", "value": 1, "type": "qi"},
+        {"status": "shield_qi", "value": 1, "type": "heal"},
+    ]
+    best = None
+    best_score = 0
+    for conversion in conversions:
+        stacks = actor.get_status_stacks(conversion["status"])
+        score = stacks * conversion["value"]
+        if score > best_score:
+            best_score = score
+            best = {"conversion": conversion, "stacks": stacks}
+    if not best or best_score == 0:
+        log(ctx, f"{actor.name} 化劲失败，没有可用状态。")
+        return
+    status = best["conversion"]["status"]
+    stacks = best["stacks"]
+    actor.consume_status(status)
+    if best["conversion"]["type"] == "damage":
+        damage = stacks * best["conversion"]["value"]
+        dealt = apply_damage(enemy, damage, ctx, true_damage=True)
+        log(ctx, f"{actor.name} 化劲消耗 {status} {stacks} 层，造成 {dealt} 真实伤害。")
+    elif best["conversion"]["type"] == "qi":
+        gain_qi(actor, stacks, ctx)
+        log(ctx, f"{actor.name} 化劲转化气 +{stacks}。")
+    elif best["conversion"]["type"] == "heal":
+        heal(actor, stacks, ctx)
+        log(ctx, f"{actor.name} 化劲转化护体，回复 {stacks} 生命。")
+
+
+def player_action_phase(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
+    intent = choose_player_intent()
+    if intent == "1":
+        actor.turns_without_attack = 0
+        if actor.qi > 0:
+            actor.qi -= 1
+            log(ctx, f"{actor.name} 选择【进】，消耗 1 气。")
+        else:
+            log(ctx, f"{actor.name} 选择【进】，但气不足。")
+        trigger_outer_skills(actor, enemy, "onAttack", ctx, None)
+        last_attack = perform_attack(actor, enemy, ctx)
+        resolve_inner_on_hit(actor, enemy, ctx)
+        trigger_outer_skills(actor, enemy, "onHit", ctx, last_attack)
+        if last_attack.crit:
+            trigger_outer_skills(actor, enemy, "onCrit", ctx, last_attack)
+        handle_counter(enemy, actor, ctx)
+    elif intent == "2":
+        actor.turns_without_attack += 1
+        gain_qi(actor, 1, ctx)
+        log(ctx, f"{actor.name} 选择【守】，回复 1 气。")
+        resolve_inner_on_defense(actor, ctx)
+        trigger_outer_skills(actor, enemy, "onDefense", ctx, None)
+        if actor.inner_skill.id == "withered_zen" and actor.turns_without_attack >= 2:
+            actor.add_status("double_strike", 1)
+            log(ctx, f"{actor.name} 枯禅定蓄力完成。")
+    else:
+        actor.turns_without_attack += 1
+        log(ctx, f"{actor.name} 选择【化】，开始转化状态。")
+        resolve_transmute(actor, enemy, ctx)
+        if actor.inner_skill.id == "withered_zen" and actor.turns_without_attack >= 2:
+            actor.add_status("double_strike", 1)
+            log(ctx, f"{actor.name} 枯禅定蓄力完成。")
+
+
 def handle_counter(defender: Actor, attacker: Actor, ctx: BattleContext) -> None:
     if defender.get_status_stacks("counter_ready") <= 0:
         return
@@ -383,7 +459,7 @@ def battle(player: Actor, enemy: Actor, ctx: BattleContext) -> bool:
         log(ctx, f"\n=== 回合 {turn} ===")
         start_turn(player, enemy, ctx)
         start_turn(enemy, player, ctx)
-        action_phase(player, enemy, ctx)
+        player_action_phase(player, enemy, ctx)
         if not enemy.is_alive():
             break
         action_phase(enemy, player, ctx)
@@ -393,12 +469,62 @@ def battle(player: Actor, enemy: Actor, ctx: BattleContext) -> bool:
     return player.is_alive()
 
 
+def show_instructions() -> None:
+    print(
+        """
+=== 说明 ===
+每回合开始时，暂停战斗。
+玩家从【进 / 守 / 化】三种出招意图中选择其一。
+该选择将决定本回合可触发的外功触发器集合。
+具体招式不由玩家选择，而由其已构筑的外功模块链自动执行。
+
+出招意图系统（MVP）
+1️⃣【进】
+* 主动出招
+* 高频触发 onHit / onAttack 外功
+* 气消耗 +1
+👉 赌快、赌爆发
+2️⃣【守】
+* 本回合防御
+* 高概率触发 onDefense 外功
+* 气恢复 +1
+👉 赌反制、赌连锁
+3️⃣【化】
+* 不直接攻击
+* 消耗已有状态
+* 将状态转为：伤害 / 气 / 护体
+👉 赌转换效率
+
+操作方式：
+* PC：1 / 2 / 3
+* 手柄：X / Y / B
+* 手机：三个大按钮
+无连按，无时机判定。
+"""
+    )
+    input("按回车返回主菜单...")
+
+
 def run_game(seed: Optional[int] = None) -> None:
     rng = random.Random(seed)
     ctx = BattleContext(rng=rng, logs=[])
     outer_pool = create_outer_pool()
 
     while True:
+        print("\n=== 主菜单 ===")
+        print("1) 开始游戏")
+        print("2) 说明")
+        print("3) 结束游戏")
+        choice = input("请选择: ").strip()
+        if choice == "2":
+            show_instructions()
+            continue
+        if choice == "3":
+            print("感谢游玩，游戏结束。")
+            return
+        if choice != "1":
+            print("无效选择，请重试。")
+            continue
         ctx.logs.clear()
         inner_skill = choose_inner_skill(rng)
         player = Actor(
@@ -427,7 +553,7 @@ def run_game(seed: Optional[int] = None) -> None:
         log(ctx, "\n战斗失败，结算结束。")
         restart = input("是否重开？(y/n): ").strip().lower()
         if restart != "y":
-            break
+            print("返回主菜单。")
 
 
 if __name__ == "__main__":
