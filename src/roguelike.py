@@ -399,6 +399,11 @@ def resolve_transmute(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
 def player_action_phase(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
     show_battle_status(actor, enemy, ctx)
     intent = choose_player_intent()
+    apply_player_intent(actor, enemy, ctx, intent)
+    show_battle_status(actor, enemy, ctx)
+
+
+def apply_player_intent(actor: Actor, enemy: Actor, ctx: BattleContext, intent: str) -> None:
     if intent == "1":
         actor.turns_without_attack = 0
         if actor.qi > 0:
@@ -429,7 +434,6 @@ def player_action_phase(actor: Actor, enemy: Actor, ctx: BattleContext) -> None:
         if actor.inner_skill.id == "withered_zen" and actor.turns_without_attack >= 2:
             actor.add_status("double_strike", 1)
             log(ctx, f"{actor.name} 枯禅定蓄力完成。")
-    show_battle_status(actor, enemy, ctx)
 
 
 def handle_counter(defender: Actor, attacker: Actor, ctx: BattleContext) -> None:
@@ -470,14 +474,19 @@ def choose_inner_skill(rng: random.Random) -> InnerSkill:
 
 
 def choose_outer_skill(pool: List[OuterSkill], rng: random.Random, ctx: BattleContext) -> OuterSkill:
-    options = rng.sample(pool, 3)
-    log(ctx, "可选外功：")
-    for index, skill in enumerate(options, start=1):
-        log(ctx, f"{index}) {skill.name} - {skill.description}")
+    options = pick_outer_skill_options(pool, rng, ctx)
     choice = ""
     while choice not in {"1", "2", "3"}:
         choice = input("请选择外功 (1/2/3): ").strip()
     return options[int(choice) - 1]
+
+
+def pick_outer_skill_options(pool: List[OuterSkill], rng: random.Random, ctx: BattleContext) -> List[OuterSkill]:
+    options = rng.sample(pool, 3)
+    log(ctx, "可选外功：")
+    for index, skill in enumerate(options, start=1):
+        log(ctx, f"{index}) {skill.name} - {skill.description}")
+    return options
 
 
 def battle(player: Actor, enemy: Actor, ctx: BattleContext) -> bool:
